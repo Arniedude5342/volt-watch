@@ -5,6 +5,8 @@ check that finds nothing returns an empty list rather than None, so callers can
 concatenate results without guarding.
 """
 
+import ipaddress
+
 from .finding import Finding
 from .severity import Severity
 
@@ -34,6 +36,34 @@ def tailscale_check(status: dict) -> list:
         )
 
     return findings
+
+
+def _is_private_source(source: str) -> bool:
+    """Return True when a firewall source cannot reach the host from the internet.
+
+    Accepts a bare address or a CIDR. ``Anywhere`` and an empty value are not
+    private, and neither is anything unparseable — an unrecognised source must
+    fail closed rather than be assumed safe.
+
+    This is deliberately based on ``is_global`` rather than ``is_private``.
+    In Python 3.14 ``is_private`` is True for the documentation ranges
+    (``192.0.2.0/24``, ``198.51.100.0/24``, ``203.0.113.0/24``), which are not
+    reachable from a hostile network but are also not a trusted source. The
+    auditor's question is the opposite one: *can this source reach me from the
+    internet?* ``is_global`` answers it directly.
+    """
+    text = (source or "").strip()
+    if not text or text.lower() == "anywhere":
+        return False
+    try:
+        if "/" in text:
+            addr = ipaddress.ip_network(text, strict=False).network_address
+        else:
+            addr = ipaddress.ip_address(text)
+    except ValueError:
+        return False
+
+    return not addr.is_global
 
 
 def ssh_exposure_check(rules: list, default_incoming: str = "deny") -> list:
@@ -68,7 +98,7 @@ def ssh_exposure_check(rules: list, default_incoming: str = "deny") -> list:
     for rule in ssh_rules:
         if rule.get("action") != "ALLOW":
             continue
-        if not rule.get("interface"):
+        if not rule.get("interface") and not _is_private_source(rule.get("source", "")):
             findings.append(
                 Finding(
                     check="sshd.exposed",
