@@ -7,7 +7,7 @@ name = "volt-watch"
 version = "0.1.0"
 description = "Read-only health and safety auditor for a Tailscale-managed Linux host"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 keywords = ["tailscale", "systemd", "monitoring", "health", "linux", "mac-mini"]
 classifiers = [

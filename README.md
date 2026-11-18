@@ -37,7 +37,7 @@ Each of these is invisible from the desktop and obvious in hindsight.
 pip install volt-watch          # or: pipx install volt-watch
 ```
 
-Needs Python 3.9+. Reads `tailscale`, `ufw`, `setpci` and `systemctl` from the
+Needs Python 3.10+. Reads `tailscale`, `ufw`, `setpci` and `systemctl` from the
 host; a missing tool is treated as "not applicable" rather than as an error.
 
 ## Usage
