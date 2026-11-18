@@ -1,0 +1,10 @@
+[Unit]
+Description=volt-watch host audit
+
+[Service]
+Type=oneshot
+# Root is required for the power-restore register check: reading the PCI
+# config space is not permitted to an unprivileged user, and setpci then
+# reports 0xff, which the auditor reports as an unreadable register rather
+# than as a disabled one.
+ExecStart=/usr/local/bin/volt-watch

@@ -1,0 +1,28 @@
+"""Run every check against the live host and collect the findings."""
+
+from . import collector
+from .checks import power_restore_check, ssh_exposure_check, tailscale_check
+
+
+def audit() -> list:
+    """Inspect the host and return every finding, worst first.
+
+    A reader returning None means the thing it inspects is absent (no
+    Tailscale CLI, no Mac register); that is a normal host, not an error, and
+    the matching check is skipped rather than reported as broken.
+    """
+    findings = []
+
+    status = collector.tailscale_status()
+    if status is not None:
+        findings.extend(tailscale_check(status))
+
+    findings.extend(
+        ssh_exposure_check(collector.ufw_rules(), collector.ufw_default_incoming())
+    )
+
+    findings.extend(power_restore_check(collector.power_restore_state()))
+
+    severity_order = {"critical": 0, "warning": 1, "info": 2}
+    findings.sort(key=lambda f: severity_order[f.severity.value])
+    return findings

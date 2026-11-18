@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "volt-watch"
+version = "0.1.0"
+description = "Read-only health and safety auditor for a Tailscale-managed Linux host"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["tailscale", "systemd", "monitoring", "health", "linux", "mac-mini"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Monitoring",
+]
+
+[project.scripts]
+volt-watch = "volt_watch.cli:main"
+
+[tool.setuptools]
+packages = ["volt_watch"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
