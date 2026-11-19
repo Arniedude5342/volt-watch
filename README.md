@@ -60,6 +60,8 @@ monitoring check.
 | `sshd.exposed` | critical | Port 22 is allowed on every interface, including the public one |
 | `sshd.unrestricted` | warning | Nothing restricts port 22 and the firewall default allows incoming |
 | `sshd.firewall_unreadable` | warning | The firewall could not be read, so SSH exposure is unknown |
+| `sshd.root_login` | critical | sshd accepts a root login |
+| `sshd.password_auth` | warning | sshd accepts password authentication |
 | `tailscale.backend` | critical | Backend state is `NeedsLogin`, `Stopped`, `NoState` or `Starting` |
 | `power.restore_disabled` | critical | Chipset is set to stay off when power returns |
 | `power.register_unreadable` | warning | `setpci` reported `0xff` — an access failure, not a value |
