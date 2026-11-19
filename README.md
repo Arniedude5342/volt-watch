@@ -59,11 +59,35 @@ monitoring check.
 |---|---|---|
 | `sshd.exposed` | critical | Port 22 is allowed on every interface, including the public one |
 | `sshd.unrestricted` | warning | Nothing restricts port 22 and the firewall default allows incoming |
+| `sshd.firewall_unreadable` | warning | The firewall could not be read, so SSH exposure is unknown |
 | `tailscale.backend` | critical | Backend state is `NeedsLogin`, `Stopped`, `NoState` or `Starting` |
 | `power.restore_disabled` | critical | Chipset is set to stay off when power returns |
 | `power.register_unreadable` | warning | `setpci` reported `0xff` — an access failure, not a value |
 | `power.register_missing` | warning | No readable register (not an Intel Mac, or no LPC device) |
 | `power.unit_disabled` | warning | The boot unit that restores auto power-on is not enabled |
+
+## Privileges
+
+A check whose input could not be read says so. That matters because two of the
+readers need root, and the safe-looking answer is the dangerous one: an
+unread firewall looks exactly like a firewall with no SSH rules.
+
+| Check | Works unprivileged | Needs root | Notes |
+|---|---|---|---|
+| `sshd.*` | partial | **yes** | reads `ufw status verbose`, a root-only wrapper on Arch/Omarchy |
+| `tailscale.*` | yes | no | reads the local Tailscale socket |
+| `power.restore_disabled` | partial | **yes** | `setpci` reads PCI config space, which is root-only |
+| `power.register_unreadable` | yes | no | reports the access failure rather than hiding it |
+| `power.unit_*` | yes | no | `systemctl is-enabled` / `is-active` |
+
+Run as root for an authoritative report:
+
+```console
+$ sudo volt-watch
+```
+
+Or grant one specific command through polkit and keep the auditor
+unprivileged — see your distribution's polkit documentation.
 
 ## What it deliberately does not do
 
