@@ -62,6 +62,8 @@ monitoring check.
 | `sshd.firewall_unreadable` | warning | The firewall could not be read, so SSH exposure is unknown |
 | `sshd.root_login` | critical | sshd accepts a root login |
 | `sshd.password_auth` | warning | sshd accepts password authentication |
+| `tailscale.exposed` | critical | A port is published to the internet with `tailscale funnel`, bypassing the firewall |
+| `tailscale.published` | info | A port is published to the tailnet with `tailscale serve` |
 | `tailscale.backend` | critical | Backend state is `NeedsLogin`, `Stopped`, `NoState` or `Starting` |
 | `power.restore_disabled` | critical | Chipset is set to stay off when power returns |
 | `power.register_unreadable` | warning | `setpci` reported `0xff` — an access failure, not a value |
