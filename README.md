@@ -66,6 +66,11 @@ message text. A missing baseline adds an `auditor.no_baseline` `info` finding.
 `--check power` runs every `power.*` check and nothing else. An unknown prefix
 exits 2 and lists the available ones.
 
+The JSON payload carries a `version` (currently `1`) and the `host` name, so a
+consumer can tell which release produced it. `findings` and `counts` are
+unchanged, and `--output` writes the same wrapper, so a `--since` baseline is
+versioned too.
+
 ## Checks
 
 | Check | Severity | Meaning |
