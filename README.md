@@ -70,6 +70,7 @@ monitoring check.
 | `power.register_unreadable` | warning | `setpci` reported `0xff` — an access failure, not a value |
 | `power.register_missing` | warning | No readable register (not an Intel Mac, or no LPC device) |
 | `power.unit_disabled` | warning | The boot unit that restores auto power-on is not enabled |
+| `power.unit_failed` | critical | The boot unit is enabled but its last run did not succeed |
 
 ## Privileges
 
