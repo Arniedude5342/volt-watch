@@ -50,6 +50,7 @@ $ volt-watch; echo $?            # 0 = clean, 1 = warnings or worse
 
 $ volt-watch --output /var/lib/volt-watch/last.json
 $ volt-watch --since /var/lib/volt-watch/last.json
+$ volt-watch --check power       # only the power.* checks
 ```
 
 Exit codes: `0` clean (or only `info`), `1` at least one warning or critical.
@@ -60,6 +61,10 @@ monitoring check.
 `--since` compares against it: a finding that is new or got worse exits 1, one
 that cleared up exits 0. The comparison uses the check and its evidence, not the
 message text. A missing baseline adds an `auditor.no_baseline` `info` finding.
+
+`--check PREFIX` runs only the checks whose name starts with the prefix, so
+`--check power` runs every `power.*` check and nothing else. An unknown prefix
+exits 2 and lists the available ones.
 
 ## Checks
 
