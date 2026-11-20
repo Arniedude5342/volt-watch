@@ -75,6 +75,7 @@ message text. A missing baseline adds an `auditor.no_baseline` `info` finding.
 | `tailscale.published` | info | A port is published to the tailnet with `tailscale serve` |
 | `tailscale.backend` | critical | Backend state is `NeedsLogin`, `Stopped`, `NoState` or `Starting` |
 | `time.unsynchronised` | warning | The host's clock is not being synchronised |
+| `packages.outdated` | info / warning / critical | 1–20, 21–100, over 100 pending package updates |
 | `power.restore_disabled` | critical | Chipset is set to stay off when power returns |
 | `power.register_unreadable` | warning | `setpci` reported `0xff` — an access failure, not a value |
 | `power.register_missing` | warning | No readable register (not an Intel Mac, or no LPC device) |
