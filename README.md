@@ -47,11 +47,19 @@ $ volt-watch                     # plain report
 $ volt-watch --json              # machine-readable
 $ volt-watch --quiet             # no output; exit code only
 $ volt-watch; echo $?            # 0 = clean, 1 = warnings or worse
+
+$ volt-watch --output /var/lib/volt-watch/last.json
+$ volt-watch --since /var/lib/volt-watch/last.json
 ```
 
 Exit codes: `0` clean (or only `info`), `1` at least one warning or critical.
 `info` findings never change the exit code, so the tool is usable as a
 monitoring check.
+
+`--output` writes the same JSON `--json` prints, so the next run can read it.
+`--since` compares against it: a finding that is new or got worse exits 1, one
+that cleared up exits 0. The comparison uses the check and its evidence, not the
+message text. A missing baseline adds an `auditor.no_baseline` `info` finding.
 
 ## Checks
 
