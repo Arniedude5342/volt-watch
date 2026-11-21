@@ -96,3 +96,45 @@ def test_the_collector_returns_none_when_the_command_fails(monkeypatch):
     _run(monkeypatch, {("checkupdates",): _Result("", 1)})
 
     assert collector.pending_update_count() is None
+
+
+def test_exit_two_means_no_updates_not_a_failure(monkeypatch):
+    """pacman-contrib's checkupdates exits 2 when there are none and 0 when
+    there are, the reverse of what this reader's docstring used to claim. The
+    reader accepts both, but the distinction matters: exit 2 with a body would be
+    a tool that changed its contract."""
+    _run(monkeypatch, {("checkupdates",): _Result("", 2)})
+
+    assert collector.pending_update_count() == 0
+
+
+def test_the_checkupdates_reader_gets_a_longer_budget(monkeypatch):
+    """``checkupdates`` runs ``pacman -Sy`` against the mirrors before it can
+    answer, so the 5s budget every other reader gets is too tight: a slow mirror
+    read as a reader that never ran, and the auditor reported a degraded audit
+    on a host that was fine."""
+    seen: dict = {}
+
+    def fake_run(cmd, **kwargs):
+        seen.update(kwargs)
+        return _Result("", 2)
+
+    monkeypatch.setattr(collector.subprocess, "run", fake_run)
+
+    collector.pending_update_count()
+
+    assert seen["timeout"] > collector.TIMEOUT_SECONDS
+
+
+def test_a_checkupdates_timeout_is_still_a_degraded_reader(monkeypatch):
+    """A longer budget is not no budget: a reader that never answers still has
+    to be visible rather than folded into a clean report."""
+
+    def slow(cmd, **kwargs):
+        raise collector.subprocess.TimeoutExpired(cmd, kwargs.get("timeout", 0))
+
+    monkeypatch.setattr(collector.subprocess, "run", slow)
+
+    assert collector.pending_update_count() is None
+    # Other readers' entries may be in the map; this one has to be.
+    assert collector.collector_errors()["pending_update_count"] == "timed out"

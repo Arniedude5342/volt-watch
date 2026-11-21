@@ -30,6 +30,14 @@ POWER_UNIT = "mac-mini-power-restore.service"
 # readers stalled in sequence would block the audit for two and a half minutes.
 TIMEOUT_SECONDS = 5
 
+# `checkupdates` is the one reader that talks to the network: it runs
+# `pacman -Sy` against the mirrors before it can say whether anything is
+# pending. Five seconds is not enough for that on a slow mirror, and a slow
+# mirror is not a hung reader — it used to surface as `auditor.degraded` on a
+# host that was fine. It still has a budget: thirty seconds, far below the
+# monitoring interval, and the same "could not run" reporting when it expires.
+CHECKUPDATES_TIMEOUT_SECONDS = 30
+
 
 # Readers record why they could not run, so the audit can say "I could not
 # tell" instead of reading an empty answer as a clean one. The map is drained
@@ -53,15 +61,18 @@ def collector_errors() -> dict:
     return errors
 
 
-def _run(cmd: list, name: str | None = None) -> subprocess.CompletedProcess:
+def _run(cmd: list, name: str | None = None, timeout: int = TIMEOUT_SECONDS) -> subprocess.CompletedProcess:
     """Run a reader's command, recording why it failed when it has a name.
 
     Readers that already have a finding of their own (the firewall pair reports
     ``sshd.firewall_unreadable``) pass no name, so a single failure is reported
     once rather than twice.
+
+    ``timeout`` defaults to the budget every local reader gets; a reader that
+    reaches the network passes its own.
     """
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_SECONDS)
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     except FileNotFoundError:
         if name:
             _record_error(name, "not installed")
@@ -376,11 +387,18 @@ def pending_update_count() -> int | None:
     ``None`` means the answer is unknown: no manager, or the command failed.
     That is not a finding.
 
-    ``checkupdates`` exits 2 when there ARE updates, 0 when there are none and 1
-    on error, so only 1 (or anything unexpected) is a failure.
+    pacman-contrib's ``checkupdates`` exits 2 when there are no updates and 0
+    when there are, which is the reverse of what this docstring used to claim;
+    both are accepted so a tool that changed its contract still answers. Exit 1
+    is an error. It runs ``pacman -Sy`` first, so it gets
+    ``CHECKUPDATES_TIMEOUT_SECONDS`` rather than the local budget.
     """
     try:
-        done = _run(["checkupdates"], "pending_update_count")
+        done = _run(
+            ["checkupdates"],
+            "pending_update_count",
+            timeout=CHECKUPDATES_TIMEOUT_SECONDS,
+        )
     except (OSError, subprocess.SubprocessError):
         return None
     if done.returncode not in (0, 2):
