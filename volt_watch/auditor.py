@@ -5,6 +5,7 @@ from .checks import (
     auditor_degraded_check,
     clock_check,
     disk_space_check,
+    failed_units_check,
     pending_updates_check,
     power_restore_check,
     ssh_exposure_check,
@@ -42,6 +43,7 @@ CHECKS: dict[str, list] = {
     ],
     "time": [lambda: clock_check(collector.clock_state())],
     "disk": [lambda: disk_space_check(collector.disk_usage())],
+    "systemd": [lambda: failed_units_check(collector.failed_units())],
     "packages": [lambda: pending_updates_check(collector.pending_update_count())],
     "power": [_power],
 }
