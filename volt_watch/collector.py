@@ -499,3 +499,66 @@ def failed_units() -> list | None:
             }
         )
     return units
+
+
+# Packages that start with "linux" but are not kernels: firmware blobs, headers
+# to build modules against, API headers, docs. None of them carries the running
+# kernel's version, so a list of installed kernels built from `pacman -Q` must
+# leave them out. Matched as a substring, not a suffix: `linux-firmware-amd`
+# and `linux-firmware-whence` are firmware too, and a suffix list would let a
+# dozen of them in and make every comparison look like a newer kernel.
+NON_KERNEL_MARKERS = (
+    "firmware",
+    "headers",
+    "api-headers",
+    "docs",
+    "tools",
+    "source",
+)
+
+
+def normalize_release(release: str) -> str:
+    """``7.2.15-1-omarchy`` -> ``7.2.15-1``, the distro suffix dropped.
+
+    ``uname -r`` appends the kernel's local version, which is how the distro's
+    rebuild is named; the package version is ``pkgver-pkgrel``. Keeping the
+    suffix would make every comparison report a pending reboot forever.
+    """
+    parts = release.strip().split("-")
+    if len(parts) >= 2 and re.match(r"^\d", parts[0]):
+        return f"{parts[0]}-{parts[1]}"
+    return release.strip()
+
+
+def kernel_versions() -> dict | None:
+    """Return the running and installed kernel releases, or None.
+
+    ``running`` is ``uname -r`` verbatim (suffix included) and ``installed`` is
+    the version of every installed kernel package, newest last. ``None`` means
+    the question could not be asked at all: no ``uname`` or no ``pacman``.
+    """
+    try:
+        uname = _run(["uname", "-r"])
+        # `pacman -Q`, not `-Qq`: the version is the whole point, and `-Qq`
+        # prints names only.
+        packages = _run(["pacman", "-Q"])
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if uname.returncode != 0:
+        return None
+    installed = []
+    if packages.returncode == 0:
+        for line in packages.stdout.splitlines():
+            fields = line.split()
+            if len(fields) != 2:
+                continue
+            name, version = fields
+            if not name.startswith("linux"):
+                continue
+            if any(marker in name for marker in NON_KERNEL_MARKERS):
+                continue
+            installed.append(version)
+    return {
+        "running": uname.stdout.strip(),
+        "installed": sorted(installed),
+    }

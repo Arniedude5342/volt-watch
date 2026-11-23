@@ -6,7 +6,9 @@ concatenate results without guarding.
 """
 
 import ipaddress
+import re
 
+from .collector import normalize_release
 from .finding import Finding
 from .severity import Severity
 
@@ -480,5 +482,78 @@ def failed_units_check(units: list | None) -> list:
                 "cause, do not just restart and move on."
             ),
             evidence={"units": names, "critical": critical},
+        )
+    ]
+
+
+def _version_key(release: str) -> tuple:
+    """``7.2.15-1`` -> ``(7, 2, 15, 1)``, for a numeric comparison.
+
+    Comparison, not equality: the question is whether the installed kernel is
+    newer, and a string compare would call ``7.2.9`` newer than ``7.2.15``.
+    Reading stops at the first non-numeric part, so a suffix cannot make the
+    tuple longer and win.
+    """
+    key = []
+    for part in re.split(r"[.-]", release):
+        digits = re.match(r"\d+", part)
+        if not digits:
+            break
+        key.append(int(digits.group(0)))
+    return tuple(key)
+
+
+def is_pending_kernel_boot(running: str, installed: list) -> bool:
+    """Whether the running kernel is older than the newest installed one.
+
+    ``running`` is ``uname -r`` and may carry the distro suffix;
+    ``installed`` is a list of package versions. An empty list is False: a host
+    with no kernel package to compare against is not a host waiting on a
+    restart.
+    """
+    if not installed:
+        return False
+    running_key = _version_key(normalize_release(running))
+    newest_key = max(_version_key(v) for v in installed)
+    return newest_key > running_key
+
+
+def kernel_reboot_check(versions: dict | None) -> list:
+    """Report a kernel newer than the running one.
+
+    ``versions`` comes from :func:`collector.kernel_versions`. ``None`` means it
+    could not be read, which is not a finding: a host with no ``uname`` is not a
+    host with a stale kernel.
+
+    The scenario that makes this matter is the one this tool exists for: the
+    host is updated, then loses power, then boots the old kernel with every fix
+    that shipped in the new one absent -- while ``packages.outdated`` reads 0,
+    because the update is installed.
+    """
+    if versions is None or not versions.get("installed"):
+        return []
+    if not is_pending_kernel_boot(versions["running"], versions["installed"]):
+        return []
+
+    newest = max(versions["installed"], key=_version_key)
+    return [
+        Finding(
+            check="kernel.pending_reboot",
+            severity=Severity.WARNING,
+            message=(
+                f"The running kernel is {versions['running']} but "
+                f"{newest} is installed; a restart is needed to run it"
+            ),
+            remedy=(
+                "Restart the host when you can. Until then it is running the "
+                "previous kernel, so anything that shipped in the new one is "
+                "not in effect -- and on a host that loses power, that is what "
+                "comes back."
+            ),
+            evidence={
+                "running": versions["running"],
+                "installed": versions["installed"],
+                "newest": newest,
+            },
         )
     ]

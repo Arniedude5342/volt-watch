@@ -16,6 +16,7 @@ _READER_DEFAULTS = {
         "percent_used": 10.0, "inode_percent_used": 5.0,
     },
     "failed_units": list,
+    "kernel_versions": lambda: {"running": "7.2.15-1-omarchy", "installed": ["7.2.15-1"]},
 }
 
 
