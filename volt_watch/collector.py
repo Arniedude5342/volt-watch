@@ -562,3 +562,36 @@ def kernel_versions() -> dict | None:
         "running": uname.stdout.strip(),
         "installed": sorted(installed),
     }
+
+
+def orphaned_packages() -> list | None:
+    """Return installed packages nothing requires any more, or None.
+
+    ``pacman -Qdt`` prints one entry per orphan: the package name and version on
+    an unindented line, the explanation indented below it. Only the unindented
+    lines are read, so the prose never becomes a field.
+
+    ``None`` means pacman is absent or failed, which is not the same as "no
+    orphans": a non-Arch host has no pacman and is not a host with a clean
+    dependency tree.
+
+    Like ``checkupdates``, pacman exits 1 when the query matched nothing, so 0
+    (orphans listed) and 1 (none) are both answers and anything else is a
+    failure. Reading only the zero case would report every clean host as
+    unknown, and the degraded-reader finding would fire on every healthy run.
+    """
+    try:
+        done = _run(["pacman", "-Qdt"])
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if done.returncode not in (0, 1):
+        return None
+    orphans = []
+    for line in done.stdout.splitlines():
+        if not line.strip() or line[0].isspace():
+            continue
+        fields = line.split()
+        if len(fields) < 2:
+            continue
+        orphans.append({"name": fields[0], "version": fields[1]})
+    return orphans

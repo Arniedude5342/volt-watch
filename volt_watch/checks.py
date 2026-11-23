@@ -557,3 +557,56 @@ def kernel_reboot_check(versions: dict | None) -> list:
             },
         )
     ]
+
+
+# An orphan that is a kernel or something the boot path loads is worth more
+# than housekeeping: removing it by hand is where a machine stops booting.
+# Matched as a prefix so `linux-lts`, `linux-zen` and a vendor kernel all hit.
+ORPHAN_WARNING_PREFIXES = (
+    "linux",
+    "nvidia",
+    "zram",
+    "mkinitcpio",
+    "grub",
+    "systemd",
+)
+
+
+def orphaned_packages_check(orphans: list | None) -> list:
+    """Report installed packages nothing requires any more.
+
+    ``orphans`` comes from :func:`collector.orphaned_packages`. ``None`` means
+    the question could not be asked (no pacman), which is not a finding: a host
+    with no pacman is not a host with a clean dependency tree.
+
+    Orphans are info -- housekeeping, not an emergency. An orphan that looks
+    like a kernel or a boot-path package is a warning, because those are the
+    ones where removing them wrong stops the next boot.
+    """
+    if not orphans:
+        return []
+
+    names = [o["name"] for o in orphans]
+    heavy = [
+        n for n in names
+        if any(n.startswith(prefix) for prefix in ORPHAN_WARNING_PREFIXES)
+    ]
+    severity = Severity.WARNING if heavy else Severity.INFO
+    return [
+        Finding(
+            check="packages.orphaned",
+            severity=severity,
+            message=(
+                f"{len(names)} installed package(s) nothing requires"
+                + (f", including {', '.join(heavy)}" if heavy else "")
+            ),
+            remedy=(
+                "`pacman -Qdt` to see them again, then `pacman -Rns <pkg>` "
+                "after checking what it would take with it (`-Rns` removes the "
+                "dependencies that came with it; read the list first). Never "
+                "remove a kernel or a boot-path package without knowing which "
+                "one the host boots."
+            ),
+            evidence={"packages": names, "boot_path": heavy},
+        )
+    ]
