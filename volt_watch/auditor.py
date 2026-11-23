@@ -4,6 +4,7 @@ from . import collector
 from .checks import (
     auditor_degraded_check,
     clock_check,
+    disk_space_check,
     pending_updates_check,
     power_restore_check,
     ssh_exposure_check,
@@ -40,6 +41,7 @@ CHECKS: dict[str, list] = {
         lambda: sshd_config_check(collector.sshd_config()),
     ],
     "time": [lambda: clock_check(collector.clock_state())],
+    "disk": [lambda: disk_space_check(collector.disk_usage())],
     "packages": [lambda: pending_updates_check(collector.pending_update_count())],
     "power": [_power],
 }
