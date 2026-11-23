@@ -7,6 +7,7 @@ from .checks import (
     disk_space_check,
     failed_units_check,
     kernel_reboot_check,
+    orphaned_packages_check,
     pending_updates_check,
     power_restore_check,
     ssh_exposure_check,
@@ -46,7 +47,10 @@ CHECKS: dict[str, list] = {
     "disk": [lambda: disk_space_check(collector.disk_usage())],
     "systemd": [lambda: failed_units_check(collector.failed_units())],
     "kernel": [lambda: kernel_reboot_check(collector.kernel_versions())],
-    "packages": [lambda: pending_updates_check(collector.pending_update_count())],
+    "packages": [
+        lambda: pending_updates_check(collector.pending_update_count()),
+        lambda: orphaned_packages_check(collector.orphaned_packages()),
+    ],
     "power": [_power],
 }
 

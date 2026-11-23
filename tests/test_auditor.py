@@ -17,6 +17,7 @@ _READER_DEFAULTS = {
     },
     "failed_units": list,
     "kernel_versions": lambda: {"running": "7.2.15-1-omarchy", "installed": ["7.2.15-1"]},
+    "orphaned_packages": list,
 }
 
 
