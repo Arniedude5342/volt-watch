@@ -371,3 +371,60 @@ def power_restore_check(state: dict) -> list:
         )
 
     return findings
+
+
+# Disk thresholds. pacman and sshd both have to write to serve a session, and
+# a host that cannot write stops looking like a host with a network problem,
+# which is the fault this tool exists to separate from the others.
+DISK_WARNING_PERCENT = 90
+DISK_CRITICAL_PERCENT = 95
+DISK_INODE_WARNING_PERCENT = 95
+DISK_INODE_CRITICAL_PERCENT = 99
+
+
+def disk_space_check(usage: dict | None) -> list:
+    """Report a filesystem running out of bytes or of inodes.
+
+    ``usage`` comes from :func:`collector.disk_usage`. ``None`` means it could
+    not be read, which is not a finding: a host whose root filesystem cannot
+    be statvfs'd is not a host with a full disk.
+
+    The two sides are checked separately and the worse one wins, because they
+    can disagree: inodes can be gone with terabytes still free.
+    """
+    if usage is None:
+        return []
+
+    percent = usage["percent_used"]
+    inode_percent = usage["inode_percent_used"]
+
+    if percent >= DISK_CRITICAL_PERCENT or inode_percent >= DISK_INODE_CRITICAL_PERCENT:
+        severity = Severity.CRITICAL
+    elif percent >= DISK_WARNING_PERCENT or inode_percent >= DISK_INODE_WARNING_PERCENT:
+        severity = Severity.WARNING
+    else:
+        return []
+
+    which = "inodes" if inode_percent > percent else "space"
+    return [
+        Finding(
+            check="disk.space_low",
+            severity=severity,
+            message=(
+                f"The root filesystem is {percent:.1f}% full and "
+                f"{inode_percent:.1f}% of its inodes are used"
+            ),
+            remedy=(
+                "Free space before anything else: `du -xhd1 /` to find what "
+                "grew, then clean package caches and old logs. If inodes are "
+                "the tight side, a directory of small files is the cause, not "
+                "a large one. Do not fill it further."
+            ),
+            evidence={
+                "percent_used": percent,
+                "inode_percent_used": inode_percent,
+                "free": usage["free"],
+                "total": usage["total"],
+            },
+        )
+    ]

@@ -8,6 +8,7 @@ Mac-specific register does not exist.
 
 import glob
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -404,6 +405,36 @@ def pending_update_count() -> int | None:
     if done.returncode not in (0, 2):
         return None
     return len([line for line in done.stdout.splitlines() if line.strip()])
+
+
+def disk_usage(path: str = "/") -> dict | None:
+    """Return byte and inode use for ``path``, or None if it cannot be read.
+
+    ``shutil.disk_usage`` gives bytes; the inode side needs ``statvfs`` and is
+    here because the two can disagree: a host with terabytes free can still be
+    dead when a directory of small files exhausted its inodes, and ``df -h``
+    would not show it.
+
+    Only ``OSError`` yields ``None``; a zero value is a real answer and is
+    reported, not treated as unknown.
+    """
+    try:
+        st = os.statvfs(path)
+    except OSError:
+        return None
+    total = st.f_blocks * st.f_frsize
+    free = st.f_bavail * st.f_frsize
+    if st.f_blocks == 0 or st.f_files == 0:
+        return None
+    return {
+        "total": total,
+        "used": total - st.f_bfree * st.f_frsize,
+        "free": free,
+        "percent_used": round((st.f_blocks - st.f_bfree) / st.f_blocks * 100, 1),
+        "inode_percent_used": round(
+            (st.f_files - st.f_ffree) / st.f_files * 100, 1
+        ),
+    }
 
 
 def unit_enabled(name: str) -> bool | None:
