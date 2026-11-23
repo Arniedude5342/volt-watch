@@ -11,6 +11,11 @@ _READER_DEFAULTS = {
     "sshd_config": lambda: None,
     "clock_state": lambda: {"synchronised": True, "service_active": True},
     "pending_update_count": lambda: 0,
+    "disk_usage": lambda: {
+        "total": 1, "used": 0, "free": 1,
+        "percent_used": 10.0, "inode_percent_used": 5.0,
+    },
+    "failed_units": list,
 }
 
 
