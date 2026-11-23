@@ -428,3 +428,57 @@ def disk_space_check(usage: dict | None) -> list:
             },
         )
     ]
+
+
+# Losing one of these makes the host unreachable or unmanageable: a dead sshd
+# on a machine you reach only over the network is the outage itself, not a
+# symptom. Matched by substring so `ssh.service` and `sshd.service` both hit,
+# and so a distro's name variant does not slip through.
+CRITICAL_FAILED_UNITS = (
+    "sshd.service",
+    "ssh.service",
+    "tailscaled.service",
+    "networkmanager.service",
+    "systemd-networkd.service",
+    "ufw.service",
+)
+
+
+def failed_units_check(units: list | None) -> list:
+    """Report systemd units whose last run failed.
+
+    ``units`` comes from :func:`collector.failed_units`. ``None`` means the
+    question could not be asked, which is not a finding: a host with no
+    systemctl is not a host with a failed service.
+
+    A unit whose loss makes the host unreachable is critical; any other failed
+    unit is a warning, because it is still worth knowing and still not an
+    emergency.
+    """
+    if not units:
+        return []
+
+    names = [u["name"] for u in units]
+    critical = [
+        n for n in names
+        if any(c in n.lower() for c in CRITICAL_FAILED_UNITS)
+    ]
+    severity = Severity.CRITICAL if critical else Severity.WARNING
+    worst = critical or names
+    return [
+        Finding(
+            check="systemd.failed",
+            severity=severity,
+            message=(
+                f"{len(names)} systemd unit(s) failed"
+                + (f", including {', '.join(worst)}" if critical else "")
+            ),
+            remedy=(
+                "`systemctl status <unit>` and `journalctl -u <unit> -b` to see "
+                "why. If the unit is one whose loss makes the host "
+                "unreachable, that is the outage: restart it and find the "
+                "cause, do not just restart and move on."
+            ),
+            evidence={"units": names, "critical": critical},
+        )
+    ]

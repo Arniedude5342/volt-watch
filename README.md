@@ -86,6 +86,7 @@ versioned too.
 | `tailscale.backend` | critical | Backend state is `NeedsLogin`, `Stopped`, `NoState` or `Starting` |
 | `time.unsynchronised` | warning | The host's clock is not being synchronised |
 | `disk.space_low` | warning / critical | The root filesystem is running out of space (90%) or inodes (95%), and critical at 95% / 99% |
+| `systemd.failed` | warning / critical | A systemd unit's last run failed; critical when the unit is one whose loss makes the host unreachable |
 | `packages.outdated` | info / warning / critical | 1–20, 21–100, over 100 pending package updates |
 | `power.restore_disabled` | critical | Chipset is set to stay off when power returns |
 | `power.register_unreadable` | warning | `setpci` reported `0xff` — an access failure, not a value |
@@ -103,6 +104,7 @@ unread firewall looks exactly like a firewall with no SSH rules.
 |---|---|---|---|
 | `sshd.*` | partial | **yes** | reads `ufw status verbose`, a root-only wrapper on Arch/Omarchy |
 | `disk.space_low` | yes | no | `statvfs` on the root filesystem, standard library only |
+| `systemd.failed` | partial | **yes** | `systemctl --failed` lists system units for everyone, but a root-only unit can be hidden from a user manager |
 | `tailscale.*` | yes | no | reads the local Tailscale socket |
 | `power.restore_disabled` | partial | **yes** | `setpci` reads PCI config space, which is root-only |
 | `power.register_unreadable` | yes | no | reports the access failure rather than hiding it |

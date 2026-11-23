@@ -462,3 +462,40 @@ def unit_active(name: str) -> bool | None:
     if done.returncode != 0:
         return False
     return done.stdout.strip() == "active"
+
+
+def failed_units() -> list | None:
+    """Return the systemd units in a failed state, or None if systemctl fails.
+
+    ``systemctl --failed --no-legend --plain`` prints one row per unit:
+
+        sshd.service loaded failed failed OpenBSD Secure Shell server
+
+    The four leading columns are the unit, its load, active and sub state;
+    the rest is the description, which is not read here. ``--plain`` keeps
+    systemd from truncating a long unit name with an ellipsis, so the name in
+    the report is the real one.
+
+    ``None`` means the question could not be asked, which is not the same as
+    "nothing failed".
+    """
+    try:
+        done = _run(["systemctl", "--failed", "--no-legend", "--plain"])
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if done.returncode != 0:
+        return None
+    units = []
+    for line in done.stdout.splitlines():
+        fields = line.split(None, 4)
+        if len(fields) < 4:
+            continue
+        units.append(
+            {
+                "name": fields[0],
+                "load": fields[1],
+                "active": fields[2],
+                "sub": fields[3],
+            }
+        )
+    return units
