@@ -4,9 +4,9 @@ Read-only health and safety auditor for a **Tailscale-managed Linux host**.
 
 It answers one question: *is this machine reachable, patched, and safe, and
 will it come back by itself after a power cut?* It reads systemd, the
-Tailscale mesh, the host firewall, and the volatile power-restore register on
-Intel Macs, then reports findings with a remedy for each. It never changes
-system state.
+Tailscale mesh, the host firewall, sshd's own authentication settings, the
+account database and the volatile power-restore register on Intel Macs, then
+reports findings with a remedy for each. It never changes system state.
 
 ```console
 $ volt-watch
@@ -80,6 +80,8 @@ versioned too.
 | `sshd.firewall_unreadable` | warning | The firewall could not be read, so SSH exposure is unknown |
 | `sshd.root_login` | critical | sshd accepts a root login |
 | `sshd.password_auth` | warning | sshd accepts password authentication |
+| `security.empty_password_accounts` | critical | An account has an empty password field, so it can log in with no password |
+| `security.shadow_unreadable` | warning | `/etc/shadow` could not be read, so passwordless accounts are unknown |
 | `auditor.degraded` | warning | Some readers could not run, so the report is incomplete |
 | `tailscale.exposed` | critical | A port is published to the internet with `tailscale funnel`, bypassing the firewall |
 | `tailscale.published` | info | A port is published to the tailnet with `tailscale serve` |
@@ -104,6 +106,7 @@ unread firewall looks exactly like a firewall with no SSH rules.
 | Check | Works unprivileged | Needs root | Notes |
 |---|---|---|---|
 | `sshd.*` | partial | **yes** | reads `ufw status verbose`, a root-only wrapper on Arch/Omarchy |
+| `security.*` | partial | **yes** | reads `/etc/shadow`; an unprivileged run reports `security.shadow_unreadable` instead of guessing |
 | `disk.space_low` | yes | no | `statvfs` on the root filesystem, standard library only |
 | `systemd.failed` | partial | **yes** | `systemctl --failed` lists system units for everyone, but a root-only unit can be hidden from a user manager |
 | `kernel.pending_reboot` | yes | no | `uname -r` and `pacman -Q`; no kernel package on a non-Arch host is not a finding |
@@ -127,8 +130,9 @@ unprivileged — see your distribution's polkit documentation.
   it is a human decision.
 - **It does not expose a service.** No listener, no agent, no remote API. It
   runs, prints, exits.
-- **It does not read secrets.** It inspects configuration and state, never
-  credentials.
+- **It does not expose secret material.** It inspects configuration and state;
+  the account check reads `/etc/shadow` only to tell an empty password field
+  from a real one, and never copies a hash or the file into a report.
 
 ## Running it on a schedule
 
