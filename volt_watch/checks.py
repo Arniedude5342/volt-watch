@@ -610,3 +610,44 @@ def orphaned_packages_check(orphans: list | None) -> list:
             evidence={"packages": names, "boot_path": heavy},
         )
     ]
+
+
+def empty_password_accounts_check(accounts: list | None) -> list:
+    """Report accounts that can authenticate with no password.
+
+    ``accounts`` comes from :func:`collector.empty_password_accounts`. ``None``
+    means the database existed but could not be read: that is a warning about
+    the audit's coverage, not a finding about the host, and it must not be
+    reported as a clean database. An empty list is a clean answer.
+    """
+    if accounts is None:
+        return [
+            Finding(
+                check="security.shadow_unreadable",
+                severity=Severity.WARNING,
+                message="The account database could not be read, so passwordless accounts are unknown",
+                remedy="Run the auditor as root, or grant read access to /etc/shadow.",
+                evidence={"path": "/etc/shadow"},
+            )
+        ]
+
+    names = [account["name"] for account in accounts]
+    if not names:
+        return []
+
+    return [
+        Finding(
+            check="security.empty_password_accounts",
+            severity=Severity.CRITICAL,
+            message=(
+                f"{len(names)} account(s) have an empty password hash: "
+                + ", ".join(names)
+            ),
+            remedy=(
+                "Set a password (`passwd <user>`) or lock the account "
+                "(`usermod -L <user>`). An empty field means login with no "
+                "password for any service that honours /etc/shadow."
+            ),
+            evidence={"accounts": names},
+        )
+    ]

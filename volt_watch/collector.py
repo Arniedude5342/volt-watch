@@ -595,3 +595,34 @@ def orphaned_packages() -> list | None:
             continue
         orphans.append({"name": fields[0], "version": fields[1]})
     return orphans
+
+
+def empty_password_accounts(path: str = "/etc/shadow") -> list | None:
+    """Return accounts whose password field is empty, or None if unreadable.
+
+    ``/etc/shadow``'s second colon-separated field is the password hash. An
+    empty field means the account can authenticate with no password; ``!``,
+    ``*`` and a real hash are not findings. Only the account name is returned —
+    never the field itself.
+
+    A missing file yields ``[]``: a host with no account database has no
+    passwordless accounts, and must not look like one it could not read. A
+    file that exists but cannot be read yields ``None``, which the check reports
+    as an unknown state rather than as a clean database.
+    """
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except FileNotFoundError:
+        return []
+    except OSError:
+        return None
+
+    accounts = []
+    for line in text.splitlines():
+        fields = line.split(":")
+        if len(fields) < 2:
+            continue
+        name, password = fields[0].strip(), fields[1]
+        if name and password == "":
+            accounts.append({"name": name})
+    return accounts

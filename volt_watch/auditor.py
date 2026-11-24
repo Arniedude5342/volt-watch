@@ -5,6 +5,7 @@ from .checks import (
     auditor_degraded_check,
     clock_check,
     disk_space_check,
+    empty_password_accounts_check,
     failed_units_check,
     kernel_reboot_check,
     orphaned_packages_check,
@@ -42,6 +43,9 @@ CHECKS: dict[str, list] = {
     "sshd": [
         _ssh_exposure,
         lambda: sshd_config_check(collector.sshd_config()),
+    ],
+    "security": [
+        lambda: empty_password_accounts_check(collector.empty_password_accounts()),
     ],
     "time": [lambda: clock_check(collector.clock_state())],
     "disk": [lambda: disk_space_check(collector.disk_usage())],
